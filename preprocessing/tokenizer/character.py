@@ -1,7 +1,7 @@
 from __future__ import annotations
 from enum import Enum
 
-from .tokenize import LexicalElement, PPToken, TokenizeException, expect
+from .tokenize import LexicalElement, ProperPPToken, TokenizeException, expect
 from .escape import EscapeSequence
 from span import Span, SourceCtx
 from typing import Optional
@@ -13,7 +13,7 @@ class CharacterPrefix(Enum):
     NONE = ""
 
 # Represents both the string-literal and the second variant of header-name
-class CharacterLiteral(PPToken):
+class CharacterLiteral(ProperPPToken):
     def __init__(self, span: Span, prefix: CharacterPrefix, contents: str) -> None:
         super().__init__(span)
 
@@ -25,7 +25,7 @@ class CharacterLiteral(PPToken):
 
     # May throw TokenizeException
     @staticmethod
-    def tokenize(ctx: SourceCtx) -> PPToken:
+    def tokenize(ctx: SourceCtx) -> ProperPPToken:
         start = ctx.idx
         prefix: Optional[CharacterPrefix] = None
 

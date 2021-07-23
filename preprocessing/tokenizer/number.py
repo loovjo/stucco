@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List, Optional, Union
 
-from .tokenize import LexicalElement, PPToken, TokenizeException, expect
+from .tokenize import LexicalElement, ProperPPToken, TokenizeException, expect
 from .escape import EscapeSequence
 from .identifier import is_identifier_ch
 from span import Span, SourceCtx
@@ -78,7 +78,7 @@ class Dot(LexicalElement):
         return ctx.peek_exact(".")
 
 
-class PPNumber(PPToken):
+class PPNumber(ProperPPToken):
     def __init__(self, span: Span, number_content: List[Union[Digit, Exponent, Dot, str]]) -> None:
         super().__init__(span)
 

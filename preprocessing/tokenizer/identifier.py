@@ -3,7 +3,7 @@ from typing import Optional
 import unicodedata
 from enum import Enum
 
-from .tokenize import LexicalElement, PPToken, TokenizeException
+from .tokenize import LexicalElement, ProperPPToken, TokenizeException
 from .escape import HexDigit
 from span import Span, SourceCtx
 
@@ -101,7 +101,7 @@ def is_identifier_ch(ch: Optional[str], can_be_digit: bool) -> bool:
 
     return False
 
-class Identifier(PPToken):
+class Identifier(ProperPPToken):
     def __init__(self, span: Span, identifier: str): # identifier has universal names expanded
         super().__init__(span)
 
@@ -112,7 +112,7 @@ class Identifier(PPToken):
 
     # May return a Keyword if appropriate
     @staticmethod
-    def tokenize(ctx: SourceCtx) -> PPToken:
+    def tokenize(ctx: SourceCtx) -> ProperPPToken:
         start = ctx.idx
 
         identifier = ""
@@ -144,7 +144,7 @@ class Identifier(PPToken):
     def is_valid(ctx: SourceCtx) -> bool:
         return is_identifier_ch(ctx.peek(1), False) or UniversalCharacterName.is_valid(ctx)
 
-class Keyword(PPToken):
+class Keyword(ProperPPToken):
     def __init__(self, span: Span, ty: KeywordType) -> None:
         super().__init__(span)
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Dict, Any
 from enum import Enum
 
-from .tokenize import LexicalElement, PPToken, TokenizeException, USE_TRIGRAPHS
+from .tokenize import LexicalElement, ProperPPToken, TokenizeException, USE_TRIGRAPHS
 from span import Span, SourceCtx
 
 class PunctuatorType(Enum):
@@ -69,7 +69,7 @@ class PunctuatorType(Enum):
 
         return table
 
-class Punctuator(PPToken):
+class Punctuator(ProperPPToken):
     def __init__(self, span: Span, ty: PunctuatorType) -> None:
         super().__init__(span)
 

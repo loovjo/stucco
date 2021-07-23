@@ -1,18 +1,10 @@
-from preprocessing.tokenizer.tokenize import tokenize, TokenizeException, PPToken
+from preprocessing.tokenizer.tokenize import tokenize, TokenizeException, ProperPPToken
 from span import Span, SourceCtx, Source, MarkColor
 
 if __name__ == "__main__":
     code = r"""
-#include <stdio>
-// hello
-/* hello */
-// hello \
-world
-int main(){ ??/
-int i = 10;
-i++++;
-printf("%d\n",i);
-}
+hello $ world
+
 """[1:-1]
 
 
@@ -22,7 +14,7 @@ printf("%d\n",i);
         parsed = tokenize(ctx)
 
         for thing in parsed:
-            if isinstance(thing, PPToken) or True:
+            if isinstance(thing, ProperPPToken) or True:
                 print(repr(thing))
                 ctx.source.print_spans([(thing.span, MarkColor.INFO_BLUE)])
                 # input()

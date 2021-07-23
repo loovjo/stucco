@@ -2,11 +2,11 @@ from __future__ import annotations
 from typing import Optional
 
 from span import Span, SourceCtx
-from .tokenize import LexicalElement, PPToken, TokenizeException, Space, Newline
+from .tokenize import LexicalElement, ProperPPToken, TokenizeException, Space, Newline
 from .punctuator import Punctuator, PunctuatorType
 from .identifier import Identifier
 
-class HeaderName(PPToken):
+class HeaderName(ProperPPToken):
     def __init__(self, span: Span, name: str, is_q: bool) -> None:
         self.span = span
         self.name = name

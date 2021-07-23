@@ -69,7 +69,7 @@ def tokenize(ctx: SourceCtx) -> List[LexicalElement]:
         elif LexicalElement.is_valid(ctx):
             tok = LexicalElement.tokenize(ctx)
             elements.append(tok)
-            if isinstance(tok, PPToken):
+            if isinstance(tok, ProperPPToken):
                 second_last_token = last_token
                 last_token = tok
         else:
@@ -125,10 +125,37 @@ class Newline(Space):
     def is_valid(ctx: SourceCtx) -> bool:
         return ctx.peek_exact("\n")
 
-# TODO: Handle backslash newline
 class PPToken(LexicalElement):
     @staticmethod
     def tokenize(ctx: SourceCtx) -> PPToken:
+        if ProperPPToken.is_valid(ctx):
+            return ProperPPToken.tokenize(ctx)
+
+        return Other.tokenize(ctx)
+
+    @staticmethod
+    def is_valid(ctx: SourceCtx) -> bool:
+        return ctx.peek() is not None
+
+class Other(PPToken):
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.span.contents()!r})"
+
+    @staticmethod
+    def tokenize(ctx: SourceCtx) -> Other:
+        start = ctx.idx
+        while ctx.peek() is not None and not ProperPPToken.is_valid(ctx) and not Space.is_valid(ctx):
+            ctx.pop()
+
+        return Other(Span(ctx.source, start, ctx.idx))
+
+    @staticmethod
+    def is_valid(ctx: SourceCtx) -> bool:
+        return ctx.peek() is not None and not ProperPPToken.is_valid(ctx) and not Space.is_valid(ctx)
+
+class ProperPPToken(PPToken):
+    @staticmethod
+    def tokenize(ctx: SourceCtx) -> ProperPPToken:
         from .string import StringLiteral
         from .character import CharacterLiteral
         from .identifier import Identifier
