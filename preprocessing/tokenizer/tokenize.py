@@ -44,13 +44,8 @@ class Tokenizable(ABC):
 class LexicalElement(Tokenizable):
     @staticmethod
     def tokenize(ctx: SourceCtx) -> LexicalElement:
-        from .comment import Comment
-
         if Space.is_valid(ctx):
             return Space.tokenize(ctx)
-
-        if Comment.is_valid(ctx):
-            return Comment.tokenize(ctx)
 
         if PPToken.is_valid(ctx):
             return PPToken.tokenize(ctx)
@@ -59,9 +54,7 @@ class LexicalElement(Tokenizable):
 
     @staticmethod
     def is_valid(ctx: SourceCtx) -> bool:
-        from .comment import Comment
-
-        return Space.is_valid(ctx) or PPToken.is_valid(ctx) or Comment.is_valid(ctx)
+        return Space.is_valid(ctx) or PPToken.is_valid(ctx)
 
 def tokenize(ctx: SourceCtx) -> List[LexicalElement]:
     from .header_name import HeaderName
@@ -87,6 +80,11 @@ def tokenize(ctx: SourceCtx) -> List[LexicalElement]:
 class Space(LexicalElement):
     @staticmethod
     def tokenize(ctx: SourceCtx) -> Space:
+        from .comment import Comment
+
+        if Comment.is_valid(ctx):
+            return Comment.tokenize(ctx)
+
         if ctx.peek_exact("\\\n"):
             return Space(ctx.pop(2)[1])
 
@@ -104,6 +102,11 @@ class Space(LexicalElement):
 
     @staticmethod
     def is_valid(ctx: SourceCtx) -> bool:
+        from .comment import Comment
+
+        if Comment.is_valid(ctx):
+            return True
+
         if USE_TRIGRAPHS:
             if ctx.peek_exact("??/\n"):
                 return True
