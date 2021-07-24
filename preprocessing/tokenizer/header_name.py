@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Optional
 
 from span import Span, SourceCtx
-from .tokenize import LexicalElement, ProperPPToken, TokenizeException, Space, Newline
+from .tokenize import LexicalElement, ProperPPToken, TokenizeException, SpaceSequence
 from .punctuator import Punctuator, PunctuatorType
 from .identifier import Identifier
 

@@ -1,13 +1,13 @@
 from __future__ import annotations
 from typing import Optional
 
-from .tokenize import LexicalElement, TokenizeException, Space, Newline, Space
+from .tokenize import LexicalElement, TokenizeException, SpaceSequence, SpaceSequence
 from span import Span, SourceCtx
 
 
-class Comment(Space):
+class Comment(SpaceSequence):
     def __init__(self, span: Span):
-        super().__init__(span)
+        super().__init__(span, has_nl=False)
 
     @staticmethod
     def tokenize(ctx: SourceCtx) -> Comment:
@@ -15,15 +15,16 @@ class Comment(Space):
         if ctx.peek_exact("//"):
             ctx.pop(2)
             while True:
-                if Newline.is_valid(ctx):
-                    Newline.tokenize(ctx)
+                if SpaceSequence.is_valid(ctx):
+                    sp = SpaceSequence.tokenize(ctx)
+                    if sp.has_nl:
+                        break
+                    else:
+                        continue
+                elif ctx.peek(1) == None:
                     break
-                if Space.is_valid(ctx):
-                    Space.tokenize(ctx)
-                    continue
-                if ctx.peek(1) == None:
-                    break
-                ctx.pop()
+                else:
+                    ctx.pop()
             return Comment(Span(ctx.source, start, ctx.idx))
 
         if ctx.peek_exact("/*"):

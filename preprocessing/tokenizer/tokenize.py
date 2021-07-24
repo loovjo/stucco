@@ -44,8 +44,8 @@ class Tokenizable(ABC):
 class LexicalElement(Tokenizable):
     @staticmethod
     def tokenize(ctx: SourceCtx) -> LexicalElement:
-        if Space.is_valid(ctx):
-            return Space.tokenize(ctx)
+        if SpaceSequence.is_valid(ctx):
+            return SpaceSequence.tokenize(ctx)
 
         if PPToken.is_valid(ctx):
             return PPToken.tokenize(ctx)
@@ -54,7 +54,7 @@ class LexicalElement(Tokenizable):
 
     @staticmethod
     def is_valid(ctx: SourceCtx) -> bool:
-        return Space.is_valid(ctx) or PPToken.is_valid(ctx)
+        return SpaceSequence.is_valid(ctx) or PPToken.is_valid(ctx)
 
 def tokenize(ctx: SourceCtx) -> List[LexicalElement]:
     from .header_name import HeaderName
@@ -77,28 +77,47 @@ def tokenize(ctx: SourceCtx) -> List[LexicalElement]:
 
     return elements
 
-class Space(LexicalElement):
+class SpaceSequence(LexicalElement):
+    def __init__(self, span: Span, has_nl: bool) -> None:
+        super().__init__(span)
+        self.has_nl = has_nl
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(has_nl={self.has_nl})"
+
     @staticmethod
-    def tokenize(ctx: SourceCtx) -> Space:
+    def tokenize(ctx: SourceCtx) -> SpaceSequence:
         from .comment import Comment
 
         if Comment.is_valid(ctx):
             return Comment.tokenize(ctx)
 
-        if ctx.peek_exact("\\\n"):
-            return Space(ctx.pop(2)[1])
+        start = ctx.idx
 
-        if ctx.peek_exact("\n"):
-            return Newline(ctx.pop()[1])
+        has_nl = False
+        has_any = False
 
-        if ctx.peek_exact(" "):
-            return Space(ctx.pop()[1])
+        while True:
+            if ctx.pop_exact("\\\n"):
+                has_any = True
+                continue
+            elif ctx.pop_exact("\n"):
+                has_nl = True
+                has_any = True
+                continue
+            elif ctx.pop_exact(" "):
+                has_any = True
+                continue
+            elif USE_TRIGRAPHS and ctx.pop_exact("??/\n"):
+                has_any = True
+                continue
+            else:
+                break
 
-        if USE_TRIGRAPHS:
-            if ctx.peek_exact("??/\n"):
-                return Space(ctx.pop(4)[1])
+        if not has_any:
+            raise TokenizeException("Expected spaces", ctx.point_span())
 
-        raise TokenizeException("Expected space", ctx.point_span())
+        return SpaceSequence(Span(ctx.source, start, ctx.idx), has_nl)
 
     @staticmethod
     def is_valid(ctx: SourceCtx) -> bool:
@@ -112,18 +131,6 @@ class Space(LexicalElement):
                 return True
 
         return ctx.peek_exact("\n") or ctx.peek_exact(" ") or ctx.peek_exact("\\\n")
-
-class Newline(Space):
-    @staticmethod
-    def tokenize(ctx: SourceCtx) -> Newline:
-        space = Space.tokenize(ctx)
-        if isinstance(space, Newline):
-            return space
-        raise TokenizeException("Expected newline", ctx.point_span())
-
-    @staticmethod
-    def is_valid(ctx: SourceCtx) -> bool:
-        return ctx.peek_exact("\n")
 
 class PPToken(LexicalElement):
     @staticmethod
@@ -144,14 +151,14 @@ class Other(PPToken):
     @staticmethod
     def tokenize(ctx: SourceCtx) -> Other:
         start = ctx.idx
-        while ctx.peek() is not None and not ProperPPToken.is_valid(ctx) and not Space.is_valid(ctx):
+        while ctx.peek() is not None and not ProperPPToken.is_valid(ctx) and not SpaceSequence.is_valid(ctx):
             ctx.pop()
 
         return Other(Span(ctx.source, start, ctx.idx))
 
     @staticmethod
     def is_valid(ctx: SourceCtx) -> bool:
-        return ctx.peek() is not None and not ProperPPToken.is_valid(ctx) and not Space.is_valid(ctx)
+        return ctx.peek() is not None and not ProperPPToken.is_valid(ctx) and not SpaceSequence.is_valid(ctx)
 
 class ProperPPToken(PPToken):
     @staticmethod
