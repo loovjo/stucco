@@ -15,12 +15,11 @@ class Comment(SpaceSequence):
         if ctx.peek_exact("//"):
             ctx.pop(2)
             while True:
+                if ctx.peek_exact("\n"):
+                    break
                 if SpaceSequence.is_valid(ctx):
-                    sp = SpaceSequence.tokenize(ctx)
-                    if sp.has_nl:
-                        break
-                    else:
-                        continue
+                    SpaceSequence.tokenize(ctx)
+                    continue
                 elif ctx.peek(1) == None:
                     break
                 else:
