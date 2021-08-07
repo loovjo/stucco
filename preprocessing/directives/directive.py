@@ -9,6 +9,7 @@ from ..tokenized_ctx import TokenizedCtx
 
 from ..tokenizer.punctuator import Punctuator, PunctuatorType
 from ..tokenizer.identifier import Identifier
+from ..tokenizer.string import StringLiteral, StringPrefix
 
 PREDEFINED_MACROS_SOURCE = Source(PseudoFilename.PREDEFINED_MACROS, "")
 
@@ -51,8 +52,6 @@ def current_time() -> str:
     return f"{time_struct.tm_hour:02}:{time_struct.tm_min:02}:{time_struct.tm_min:02}"
 
 def make_str_macro(st: str) -> Macro:
-    from ..tokenizer.string import StringLiteral, StringPrefix
-
     span = Span(PREDEFINED_MACROS_SOURCE, 0, 0)
     return ObjectMacro(
         [StringLiteral(span, StringPrefix.NONE, st)]
@@ -133,6 +132,7 @@ def get_directive_tokens(tokens: TokenizedCtx) -> TokenizedCtx:
         if isinstance(next, SpaceSequence) and next.has_nl or next is None:
             break
         tokens.pop_element()
+
     return TokenizedCtx(tokens.elements, start, tokens.idx)
 
 def preprocess_define(directive_name: Identifier, tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
@@ -220,11 +220,17 @@ def define_function_macro(macro_name: Identifier, contents: TokenizedCtx, ctx: D
     ctx.macros[name] = macro
 
 def preprocess_undef(directive_name: Identifier, tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
-    name_token = tokens.pop_token()
+    args = get_directive_tokens(tokens)
+
+    name_token = args.pop_token()
     if name_token is None:
         raise DirectiveException("Expected macro name", directive_name.span)
     if not isinstance(name_token, Identifier):
         raise DirectiveException("Macro name has to be an identifier", name_token.span)
+
+    after = args.peek_token()
+    if after is not None:
+        raise DirectiveException("Expected newline", after.span)
 
     macro_name = name_token.identifier
 
@@ -232,7 +238,19 @@ def preprocess_undef(directive_name: Identifier, tokens: TokenizedCtx, ctx: Dire
         del ctx.macros[macro_name]
 
 def preprocess_error(directive_name: Identifier, tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
-    raise NotImplementedError("#error is not yet implemented")
+    args = get_directive_tokens(tokens)
+
+    error_token = args.pop_token()
+    if error_token is None:
+        raise DirectiveException("Expected error message", directive_name.span)
+    if not isinstance(error_token, StringLiteral):
+        raise DirectiveException("Expected string literal", error_token.span)
+
+    after = args.peek_token()
+    if after is not None:
+        raise DirectiveException("Expected newline", after.span)
+
+    raise DirectiveError(error_token.contents, error_token.span)
 
 def preprocess_include(directive_name: Identifier, tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
     raise NotImplementedError("#error is not yet implemented")

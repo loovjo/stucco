@@ -1,6 +1,7 @@
 from preprocessing.tokenizer.tokenize import TokenizeException, ProperPPToken
 from preprocessing.tokenized_ctx import TokenizedCtx
 from preprocessing.directives.directive import preprocess, DirectiveExecutionContext, DirectiveException
+import traceback
 
 from span import Span, SourceCtx, Source, MarkColor
 
@@ -16,6 +17,7 @@ dprintf(E);
 
 #undef E
 // #endif
+#error "helo world"
 
 """[1:-1]
 
@@ -48,5 +50,6 @@ dprintf(E);
         print("Error:", e.msg)
         ctx.source.print_spans([(e.span, MarkColor.ERROR_RED)])
     except DirectiveException as e:
+        # traceback.print_exc()
         print("Error:", e.msg)
         ctx.source.print_spans([(e.span, MarkColor.ERROR_RED)])
