@@ -56,27 +56,6 @@ class LexicalElement(Tokenizable):
     def is_valid(ctx: SourceCtx) -> bool:
         return SpaceSequence.is_valid(ctx) or PPToken.is_valid(ctx)
 
-def tokenize(ctx: SourceCtx) -> List[LexicalElement]:
-    from .header_name import HeaderName
-    elements: List[LexicalElement] = []
-
-    last_token = None
-    second_last_token = None
-
-    while True:
-        if len(elements) >= 2 and HeaderName.is_valid(ctx, last_token, second_last_token):
-            elements.append(HeaderName.tokenize(ctx))
-        elif LexicalElement.is_valid(ctx):
-            tok = LexicalElement.tokenize(ctx)
-            elements.append(tok)
-            if isinstance(tok, ProperPPToken):
-                second_last_token = last_token
-                last_token = tok
-        else:
-            break
-
-    return elements
-
 class SpaceSequence(LexicalElement):
     def __init__(self, span: Span, has_nl: bool) -> None:
         super().__init__(span)

@@ -1,4 +1,6 @@
-from preprocessing.tokenizer.tokenize import tokenize, TokenizeException, ProperPPToken
+from preprocessing.tokenizer.tokenize import TokenizeException, ProperPPToken
+from preprocessing.tokenized_ctx import TokenizedCtx
+
 from span import Span, SourceCtx, Source, MarkColor
 
 if __name__ == "__main__":
@@ -11,18 +13,21 @@ hello $ world
     ctx = SourceCtx(Source("x.py", code), 0)
 
     try:
-        parsed = tokenize(ctx)
+        tokenized = TokenizedCtx.tokenize(ctx)
 
-        for thing in parsed:
-            if isinstance(thing, ProperPPToken) or True:
-                print(repr(thing))
-                ctx.source.print_spans([(thing.span, MarkColor.INFO_BLUE)])
-                # input()
+        while True:
+            thing = tokenized.pop_token()
+            if thing is None:
+                break
+
+            print(repr(thing))
+            ctx.source.print_spans([(thing.span, MarkColor.INFO_BLUE)])
+            # input()
 
         print("end:")
         ctx.source.print_spans([(ctx.point_span(), MarkColor.INFO_BLUE)])
 
-        ctx.source.print_spans([(thing.span, MarkColor.INFO_BLUE) for thing in parsed])
+        # ctx.source.print_spans([(thing.span, MarkColor.INFO_BLUE) for thing in parsed])
 
     except TokenizeException as e:
         print("Error:", e.msg)
