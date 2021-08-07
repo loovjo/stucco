@@ -253,7 +253,7 @@ def preprocess_error(directive_name: Identifier, tokens: TokenizedCtx, ctx: Dire
     raise DirectiveError(error_token.contents, error_token.span)
 
 def preprocess_include(directive_name: Identifier, tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
-    raise NotImplementedError("#error is not yet implemented")
+    raise NotImplementedError("#include is not yet implemented")
 
 def preprocess_if_group(directive_name: Identifier, tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
     raise NotImplementedError("#if... is not yet implemented")
