@@ -99,10 +99,8 @@ def preprocess(tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
                 if directive_name_ident is None:
                     raise DirectiveException("File ended after directive start!", tok.span)
                 if not isinstance(directive_name_ident, Identifier):
-                    raise DirectiveException(f"# followed by a non-identifier ({directive_name_ident})", directive_name_ident.span)
+                    raise DirectiveException("# followed by a non-identifier", directive_name_ident.span)
                 name = directive_name_ident.identifier
-
-                print("Detected barco:", name)
 
                 if name == "define":
                     preprocess_define(directive_name_ident, tokens, ctx)
@@ -118,9 +116,14 @@ def preprocess(tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
                     preprocess_line(directive_name_ident, tokens, ctx)
                 elif name == "pragma":
                     preprocess_pragma(directive_name_ident, tokens, ctx)
+                else:
+                    # TODO: Should you actually emit an error here?
+                    # clang and gcc do, but the standard seems to say they should be ignored
+                    raise DirectiveException(f"Unknown directive {name}", directive_name_ident.span)
+                continue
+
         # TODO: Handle identifier for macro expansion
-        else:
-            pass
+        pass
 
 # Makes a separate subtokenizedctx for the "arguments" of the directive
 def get_directive_tokens(tokens: TokenizedCtx) -> TokenizedCtx:
@@ -207,7 +210,7 @@ def define_function_macro(macro_name: Identifier, contents: TokenizedCtx, ctx: D
             else:
                 raise DirectiveException("Expected comma or closing parenthesis", next.span)
         else:
-            raise DirectiveException(f"Expected parameter name or ..., got {tok}", tok.span)
+            raise DirectiveException("Expected parameter name or ...", tok.span)
 
     body: List[LexicalElement] = []
     while contents.peek_element() is not None:
