@@ -6,11 +6,12 @@ from span import Span, SourceCtx, Source, MarkColor
 
 if __name__ == "__main__":
     code = r"""
-#if 1 == 1
+// #if 1 == 1
 #define S_(x) #x
 #define S(x) S_(x)
 #define dprintf(...) printf(__FILE__ ":" S(__LINE__) ": " __VA_ARGS__)
-#endif
+#define E 2.71
+// #endif
 
 """[1:-1]
 
@@ -19,7 +20,10 @@ if __name__ == "__main__":
 
     try:
         tokenized = TokenizedCtx.tokenize(ctx)
-        preprocess(tokenized, DirectiveExecutionContext())
+
+        dectx = DirectiveExecutionContext()
+        preprocess(tokenized, dectx)
+        print(dectx.macros)
 
 
         while True:

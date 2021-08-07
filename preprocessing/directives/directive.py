@@ -13,7 +13,9 @@ from ..tokenizer.identifier import Identifier
 PREDEFINED_MACROS_SOURCE = Source(PseudoFilename.PREDEFINED_MACROS, "")
 
 class Macro(ABC):
-    pass
+    @abstractmethod
+    def __repr__(self) -> str:
+        pass
 
 class FunctionMacro(Macro):
     def __init__(self, parameters: List[str], has_varargs: bool, body: List[LexicalElement]) -> None:
@@ -21,9 +23,15 @@ class FunctionMacro(Macro):
         self.has_varargs = has_varargs
         self.body = body
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.parameters}{', ...' * self.has_varargs}, {self.body})"
+
 class ObjectMacro(Macro):
     def __init__(self, body: List[LexicalElement]) -> None:
         self.body = body
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.body})"
 
 MONTHS = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -80,8 +88,6 @@ class DirectiveError(DirectiveException):
 
 # Modifies tokens in place, may throw DirectiveException
 def preprocess(tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
-    ctx = DirectiveExecutionContext()
-
     while True:
         tok = tokens.pop_token()
         if tok is None:
@@ -99,39 +105,131 @@ def preprocess(tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
                 print("Detected barco:", name)
 
                 if name == "define":
-                    preprocess_define(tokens, ctx)
+                    preprocess_define(directive_name_ident, tokens, ctx)
                 elif name == "undef":
-                    preprocess_undef(tokens, ctx)
+                    preprocess_undef(directive_name_ident, tokens, ctx)
                 elif name == "error":
-                    preprocess_error(tokens, ctx)
+                    preprocess_error(directive_name_ident, tokens, ctx)
                 elif name == "include":
-                    preprocess_include(tokens, ctx)
+                    preprocess_include(directive_name_ident, tokens, ctx)
                 elif name in ["if", "ifdef", "ifndef"]:
-                    preprocess_if_group(name, tokens, ctx)
+                    preprocess_if_group(directive_name_ident, tokens, ctx)
                 elif name == "line":
-                    preprocess_line(tokens, ctx)
+                    preprocess_line(directive_name_ident, tokens, ctx)
                 elif name == "pragma":
-                    preprocess_pragma(tokens, ctx)
+                    preprocess_pragma(directive_name_ident, tokens, ctx)
+        # TODO: Handle identifier for macro expansion
         else:
             pass
 
-def preprocess_define(tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
-    raise NotImplementedError("#define is not yet implemented")
+# Makes a separate subtokenizedctx for the "arguments" of the directive
+def get_directive_tokens(tokens: TokenizedCtx) -> TokenizedCtx:
+    start = tokens.idx
+    while True:
+        next = tokens.peek_element()
+        if isinstance(next, SpaceSequence) and next.has_nl or next is None:
+            break
+        tokens.pop_element()
+    return TokenizedCtx(tokens.elements, start, tokens.idx)
 
-def preprocess_undef(tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
+def preprocess_define(directive_name: Identifier, tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
+    args = get_directive_tokens(tokens)
+
+    name_token = args.pop_token()
+    if name_token is None:
+        raise DirectiveException("No macro name specified", directive_name.span)
+
+    if not isinstance(name_token, Identifier):
+        raise DirectiveException("Macro name has to be an identifier", name_token.span)
+
+    paren_or_space = args.peek_element()
+    if isinstance(paren_or_space, Punctuator) and paren_or_space.ty == PunctuatorType.OPEN_PAREN:
+        define_function_macro(name_token, args, ctx)
+    else:
+        define_object_macro(name_token, args, ctx)
+
+def define_object_macro(macro_name: Identifier, contents: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
+    name = macro_name.identifier
+
+    if name in ctx.macros:
+        # TODO: We need to check if this macro is identical to the old one
+        raise DirectiveException("Object macro already defined", macro_name.span)
+
+    body: List[LexicalElement] = []
+    while contents.peek_element() is not None:
+        body.append(contents.pop_element()) # type: ignore # we know pop_element won't be None because we just checked in the loop condition
+
+    macro = ObjectMacro(body)
+    ctx.macros[name] = macro
+
+def define_function_macro(macro_name: Identifier, contents: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
+    name = macro_name.identifier
+
+    if name in ctx.macros:
+        # TODO: We need to check if this macro is identical to the old one
+        raise DirectiveException("Function macro already defined", macro_name.span)
+
+    open_paren = contents.pop_element()
+    # Following condition is checked before call in preprocess_define
+    assert(isinstance(open_paren, Punctuator) and open_paren.ty == PunctuatorType.OPEN_PAREN)
+
+    parameters: List[str] = []
+    has_varargs = False
+    while True:
+        tok = contents.pop_token()
+        if tok is None:
+            raise DirectiveException("Argument list unexpectedly ended", open_paren.span)
+
+        if isinstance(tok, Identifier):
+            param_name = tok
+            assert(isinstance(param_name, Identifier))
+
+            parameters.append(param_name.identifier)
+
+            next = contents.pop_token()
+            if isinstance(next, Punctuator) and next.ty == PunctuatorType.COMMA:
+                continue
+            elif isinstance(next, Punctuator) and next.ty == PunctuatorType.CLOSE_PAREN:
+                break
+            elif next is None:
+                raise DirectiveException("Argument list unexpectedly ended", open_paren.span)
+            else:
+                raise DirectiveException("Expected comma or closing parenthesis", next.span)
+
+        elif isinstance(tok, Punctuator) and tok.ty == PunctuatorType.TRIPLE_DOT:
+            has_varargs = True
+
+            next = contents.pop_token()
+            if isinstance(next, Punctuator) and next.ty == PunctuatorType.CLOSE_PAREN:
+                break
+            elif next is None:
+                raise DirectiveException("Argument list unexpectedly ended", open_paren.span)
+            else:
+                raise DirectiveException("Expected comma or closing parenthesis", next.span)
+        else:
+            raise DirectiveException(f"Expected parameter name or ..., got {tok}", tok.span)
+
+    body: List[LexicalElement] = []
+    while contents.peek_element() is not None:
+        body.append(contents.pop_element()) # type: ignore # we know pop_element won't be None because we just checked in the loop condition
+
+    macro = FunctionMacro(parameters, has_varargs, body)
+    ctx.macros[name] = macro
+
+def preprocess_undef(directive_name: Identifier, tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
     raise NotImplementedError("#undef is not yet implemented")
 
-def preprocess_error(tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
+def preprocess_error(directive_name: Identifier, tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
     raise NotImplementedError("#error is not yet implemented")
 
-def preprocess_include(tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
+def preprocess_include(directive_name: Identifier, tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
     raise NotImplementedError("#error is not yet implemented")
 
-def preprocess_if_group(name: str, tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
+def preprocess_if_group(directive_name: Identifier, tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
     raise NotImplementedError("#if... is not yet implemented")
 
-def preprocess_line(tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
+def preprocess_line(directive_name: Identifier, tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
     raise NotImplementedError("#if... is not yet implemented")
 
-def preprocess_pragma(tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
+def preprocess_pragma(directive_name: Identifier, tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
     raise NotImplementedError("#pragma... is not yet implemented")
