@@ -5,32 +5,36 @@ from span import Span, SourceCtx, Source
 from .tokenizer.tokenize import TokenizeException, PPToken, ProperPPToken, LexicalElement
 
 class TokenizedCtx:
-    def __init__(self, elements: List[LexicalElement], idx: int = 0) -> None:
+    def __init__(self, elements: List[LexicalElement], idx: int = 0, end: Optional[int] = None) -> None:
         self.elements = elements
         self.idx = idx
 
+        self.end = len(elements) if end is None else end
+
+        assert(self.end <= len(self.elements))
+
     def current_span(self) -> Span:
-        if self.idx >= len(self.elements):
+        if self.idx >= self.end:
             last = self.elements[-1].span
             return Span(last.source, last.end, last.end)
 
         return self.elements[self.idx].span
 
     def peek_element(self, offset: int = 0) -> Optional[LexicalElement]:
-        if 0 <= self.idx + offset < len(self.elements):
+        if 0 <= self.idx + offset < self.end:
             return self.elements[self.idx + offset]
         return None
 
     def peek_token(self) -> Optional[LexicalElement]:
         i = self.idx
-        while i < len(self.elements):
+        while i < self.end:
             if isinstance(self.elements[i], PPToken):
                 return self.elements[i]
             i += 1
         return None
 
     def pop_element(self) -> Optional[LexicalElement]:
-        if self.idx >= len(self.elements):
+        if self.idx >= self.end:
             return None
         else:
             e = self.elements[self.idx]
@@ -38,7 +42,7 @@ class TokenizedCtx:
             return e
 
     def pop_token(self) -> Optional[LexicalElement]:
-        while self.idx < len(self.elements):
+        while self.idx < self.end:
             el = self.elements[self.idx]
             self.idx += 1
             if isinstance(el, PPToken):
