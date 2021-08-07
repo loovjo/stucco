@@ -16,11 +16,10 @@ class TokenizedCtx:
 
         return self.elements[self.idx].span
 
-    def peek_element(self) -> Optional[LexicalElement]:
-        if self.idx >= len(self.elements):
-            return None
-        else:
-            return self.elements[self.idx]
+    def peek_element(self, offset: int = 0) -> Optional[LexicalElement]:
+        if 0 <= self.idx + offset < len(self.elements):
+            return self.elements[self.idx + offset]
+        return None
 
     def peek_token(self) -> Optional[LexicalElement]:
         i = self.idx

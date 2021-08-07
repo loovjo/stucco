@@ -144,9 +144,9 @@ class Identifier(ProperPPToken):
     def is_valid(ctx: SourceCtx) -> bool:
         return is_identifier_ch(ctx.peek(1), False) or UniversalCharacterName.is_valid(ctx)
 
-class Keyword(ProperPPToken):
+class Keyword(Identifier):
     def __init__(self, span: Span, ty: KeywordType) -> None:
-        super().__init__(span)
+        super().__init__(span, ty.value)
 
         self.ty = ty
 

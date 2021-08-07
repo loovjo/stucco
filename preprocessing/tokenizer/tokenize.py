@@ -163,7 +163,7 @@ class ProperPPToken(PPToken):
         if PPNumber.is_valid(ctx):
             return PPNumber.tokenize(ctx)
 
-        raise TokenizeException("Expected preprocessing teken", ctx.point_span())
+        raise TokenizeException("Expected preprocessing token", ctx.point_span())
 
     @staticmethod
     def is_valid(ctx: SourceCtx) -> bool:

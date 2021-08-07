@@ -1,11 +1,16 @@
 from preprocessing.tokenizer.tokenize import TokenizeException, ProperPPToken
 from preprocessing.tokenized_ctx import TokenizedCtx
+from preprocessing.directives.directive import preprocess, DirectiveExecutionContext, DirectiveException
 
 from span import Span, SourceCtx, Source, MarkColor
 
 if __name__ == "__main__":
     code = r"""
-hello $ world
+#if 1 == 1
+#define S_(x) #x
+#define S(x) S_(x)
+#define dprintf(...) printf(__FILE__ ":" S(__LINE__) ": " __VA_ARGS__)
+#endif
 
 """[1:-1]
 
@@ -14,6 +19,8 @@ hello $ world
 
     try:
         tokenized = TokenizedCtx.tokenize(ctx)
+        preprocess(tokenized, DirectiveExecutionContext())
+
 
         while True:
             thing = tokenized.pop_token()
@@ -30,5 +37,8 @@ hello $ world
         # ctx.source.print_spans([(thing.span, MarkColor.INFO_BLUE) for thing in parsed])
 
     except TokenizeException as e:
+        print("Error:", e.msg)
+        ctx.source.print_spans([(e.span, MarkColor.ERROR_RED)])
+    except DirectiveException as e:
         print("Error:", e.msg)
         ctx.source.print_spans([(e.span, MarkColor.ERROR_RED)])

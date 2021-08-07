@@ -27,8 +27,11 @@ class DownSpan:
         self.span_idx = span_idx
         self.col = col
 
+class PseudoFilename(Enum):
+    PREDEFINED_MACROS = "Predefined macros"
+
 class Source:
-    def __init__(self, filename: str, contents: str) -> None:
+    def __init__(self, filename: Union[str, PseudoFilename], contents: str) -> None:
         self.filename = filename
         self.contents = contents
         self.lines = self.contents.split("\n")
