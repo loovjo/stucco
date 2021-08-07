@@ -217,7 +217,16 @@ def define_function_macro(macro_name: Identifier, contents: TokenizedCtx, ctx: D
     ctx.macros[name] = macro
 
 def preprocess_undef(directive_name: Identifier, tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
-    raise NotImplementedError("#undef is not yet implemented")
+    name_token = tokens.pop_token()
+    if name_token is None:
+        raise DirectiveException("Expected macro name", directive_name.span)
+    if not isinstance(name_token, Identifier):
+        raise DirectiveException("Macro name has to be an identifier", name_token.span)
+
+    macro_name = name_token.identifier
+
+    if macro_name in ctx.macros:
+        del ctx.macros[macro_name]
 
 def preprocess_error(directive_name: Identifier, tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
     raise NotImplementedError("#error is not yet implemented")

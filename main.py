@@ -11,6 +11,10 @@ if __name__ == "__main__":
 #define S(x) S_(x)
 #define dprintf(...) printf(__FILE__ ":" S(__LINE__) ": " __VA_ARGS__)
 #define E 2.71
+
+dprintf(E);
+
+#undef E
 // #endif
 
 """[1:-1]
@@ -23,7 +27,7 @@ if __name__ == "__main__":
 
         dectx = DirectiveExecutionContext()
         preprocess(tokenized, dectx)
-        print(dectx.macros)
+        print(dectx.macros.keys())
 
 
         while True:
