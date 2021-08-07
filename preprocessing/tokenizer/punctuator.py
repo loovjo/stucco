@@ -80,10 +80,17 @@ class Punctuator(ProperPPToken):
 
     @staticmethod
     def tokenize(ctx: SourceCtx) -> Punctuator:
+        longest = None
+
         for name, punct in PunctuatorType.lookup().items():
             if ctx.peek_exact(name):
-                _, span = ctx.pop(len(name))
-                return Punctuator(span, punct)
+                if longest is None or len(name) > len(longest[0]):
+                    longest = name, punct
+
+        if longest is not None:
+            name, punct = longest
+            _, span = ctx.pop(len(name))
+            return Punctuator(span, punct)
         raise TokenizeException("Expected punctuator", ctx.point_span())
 
     @staticmethod
