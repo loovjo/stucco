@@ -18,9 +18,9 @@ class HeaderName(ProperPPToken):
         start = ctx.idx
 
         is_q = True
-        if ctx.peek_exact("<"):
+        if ctx.pop_exact("<"):
             is_q = False
-        elif ctx.peek_exact('"'):
+        elif ctx.pop_exact('"'):
             is_q = True
         else:
             raise TokenizeException("Expected header name", ctx.point_span())

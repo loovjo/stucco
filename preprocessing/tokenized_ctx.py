@@ -131,16 +131,17 @@ class TokenizedCtx:
         second_last_token = None
 
         while True:
+            tok: Optional[LexicalElement] = None
             if len(elements) >= 2 and HeaderName.is_valid(ctx, last_token, second_last_token):
-                elements.append(HeaderName.tokenize(ctx))
+                tok = HeaderName.tokenize(ctx)
             elif LexicalElement.is_valid(ctx):
                 tok = LexicalElement.tokenize(ctx)
-                elements.append(tok)
-                if isinstance(tok, ProperPPToken):
-                    second_last_token = last_token
-                    last_token = tok
             else:
                 break
+            elements.append(tok)
+            if isinstance(tok, ProperPPToken):
+                second_last_token = last_token
+                last_token = tok
 
         return TokenizedCtx.from_list(elements)
 
