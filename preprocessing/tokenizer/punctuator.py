@@ -3,7 +3,8 @@ from typing import Dict, Any
 from enum import Enum
 
 from .tokenize import LexicalElement, ProperPPToken, TokenizeException, USE_TRIGRAPHS
-from span import Span, SourceCtx
+from span import Span, SourceStream
+
 
 class PunctuatorType(Enum):
     OPEN_BRACKET = ["[", "<:"] + USE_TRIGRAPHS * ["??("]
@@ -69,6 +70,7 @@ class PunctuatorType(Enum):
 
         return table
 
+
 class Punctuator(ProperPPToken):
     def __init__(self, span: Span, ty: PunctuatorType) -> None:
         super().__init__(span)
@@ -79,24 +81,24 @@ class Punctuator(ProperPPToken):
         return f"{self.__class__.__name__}({self.ty})"
 
     @staticmethod
-    def tokenize(ctx: SourceCtx) -> Punctuator:
+    def tokenize(inp: SourceStream) -> Punctuator:
         longest = None
 
         for name, punct in PunctuatorType.lookup().items():
-            if ctx.peek_exact(name):
+            if inp.peek_exact(name):
                 if longest is None or len(name) > len(longest[0]):
                     longest = name, punct
 
         if longest is not None:
             name, punct = longest
-            _, span = ctx.pop(len(name))
+            _, span = inp.pop(len(name))
             return Punctuator(span, punct)
-        raise TokenizeException("Expected punctuator", ctx.point_span())
+        raise TokenizeException("Expected punctuator", inp.point_span())
 
     @staticmethod
-    def is_valid(ctx: SourceCtx) -> bool:
+    def is_valid(inp: SourceStream) -> bool:
         for name in PunctuatorType.lookup().keys():
-            if ctx.peek_exact(name):
+            if inp.peek_exact(name):
                 return True
         return False
 

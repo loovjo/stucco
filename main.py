@@ -1,9 +1,13 @@
 from preprocessing.tokenizer.tokenize import TokenizeException, ProperPPToken
-from preprocessing.tokenized_ctx import TokenizedCtx
-from preprocessing.directives import preprocess, DirectiveExecutionContext, DirectiveException
+from preprocessing.tokenized_stream import TokenizedStream
+from preprocessing.directives import (
+    preprocess,
+    DirectiveExecutionContext,
+    DirectiveException,
+)
 import traceback
 
-from span import Span, SourceCtx, Source, MarkColor
+from span import Span, SourceStream, Source, MarkColor
 
 if __name__ == "__main__":
     code = r"""
@@ -21,17 +25,18 @@ dprintf(E);
 // #endif
 // #error "helo world"
 
-"""[1:-1]
+"""[
+        1:-1
+    ]
 
-    ctx = SourceCtx(Source("x.py", code), 0)
+    ctx = SourceStream(Source("x.py", code), 0)
 
     try:
-        tokenized = TokenizedCtx.tokenize(ctx)
+        tokenized = TokenizedStream.tokenize(ctx)
 
         dectx = DirectiveExecutionContext()
         preprocess(tokenized, dectx)
         print(dectx.macros.keys())
-
 
         while True:
             thing = tokenized.pop_token()

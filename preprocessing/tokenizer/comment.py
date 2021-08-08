@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Optional
 
 from .tokenize import LexicalElement, TokenizeException, SpaceSequence, SpaceSequence
-from span import Span, SourceCtx
+from span import Span, SourceStream
 
 
 class Comment(SpaceSequence):
@@ -10,33 +10,35 @@ class Comment(SpaceSequence):
         super().__init__(span, has_nl=False)
 
     @staticmethod
-    def tokenize(ctx: SourceCtx) -> Comment:
-        start = ctx.idx
-        if ctx.peek_exact("//"):
-            ctx.pop(2)
+    def tokenize(inp: SourceStream) -> Comment:
+        start = inp.idx
+        if inp.peek_exact("//"):
+            inp.pop(2)
             while True:
-                if ctx.peek_exact("\n"):
+                if inp.peek_exact("\n"):
                     break
-                if SpaceSequence.is_valid(ctx):
-                    SpaceSequence.tokenize(ctx)
+                if SpaceSequence.is_valid(inp):
+                    SpaceSequence.tokenize(inp)
                     continue
-                elif ctx.peek(1) == None:
+                elif inp.peek(1) == None:
                     break
                 else:
-                    ctx.pop()
-            return Comment(Span(ctx.source, start, ctx.idx))
+                    inp.pop()
+            return Comment(Span(inp.source, start, inp.idx))
 
-        if ctx.peek_exact("/*"):
-            ctx.pop(2)
+        if inp.peek_exact("/*"):
+            inp.pop(2)
             while True:
-                if ctx.pop_exact("*/") != None:
+                if inp.pop_exact("*/") != None:
                     break
-                if ctx.peek() == None:
-                    raise TokenizeException("File ended in comment", Span(ctx.source, start, ctx.idx))
-                ctx.pop()
-            return Comment(Span(ctx.source, start, ctx.idx))
-        raise TokenizeException("Expected comment", ctx.point_span())
+                if inp.peek() == None:
+                    raise TokenizeException(
+                        "File ended in comment", Span(inp.source, start, inp.idx)
+                    )
+                inp.pop()
+            return Comment(Span(inp.source, start, inp.idx))
+        raise TokenizeException("Expected comment", inp.point_span())
 
     @staticmethod
-    def is_valid(ctx: SourceCtx) -> bool:
-        return ctx.peek_exact("//") or ctx.peek_exact("/*")
+    def is_valid(inp: SourceStream) -> bool:
+        return inp.peek_exact("//") or inp.peek_exact("/*")

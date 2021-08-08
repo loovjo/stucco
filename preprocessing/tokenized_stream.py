@@ -1,25 +1,35 @@
 from __future__ import annotations
 from typing import List, Optional, NewType, Dict, Tuple
 
-from span import Span, SourceCtx, Source, PseudoFilename
-from .tokenizer.tokenize import TokenizeException, PPToken, ProperPPToken, LexicalElement
+from span import Span, SourceStream, Source, PseudoFilename
+from .tokenizer.tokenize import (
+    TokenizeException,
+    PPToken,
+    ProperPPToken,
+    LexicalElement,
+)
+
 
 class _EOFElement(LexicalElement):
     @staticmethod
-    def tokenize(ctx: SourceCtx) -> LexicalElement:
-        raise TokenizeException("_EOFElement should never be tokenized", ctx.point_span())
+    def tokenize(inp: SourceStream) -> LexicalElement:
+        raise TokenizeException(
+            "_EOFElement should never be tokenized", inp.point_span()
+        )
 
     @staticmethod
-    def is_valid(ctx: SourceCtx) -> bool:
+    def is_valid(inp: SourceStream) -> bool:
         return False
+
 
 ElementKey = NewType("ElementKey", int)
 START: ElementKey = ElementKey(0)
 
-# TokenizedCtx iterates using an internal doubly linked list. The linked list
+# TokenizedStream iterates using an internal doubly linked list. The linked list
 # is shared among subctxs.
-# Internally, the linked list is circular, but the TokenizedCtx.end represents
+# Internally, the linked list is circular, but the TokenizedStream.end represents
 # the first member of the list that is not part of the ctx
+
 
 class Entry:
     def __init__(self, element: LexicalElement, previous: ElementKey, next: ElementKey):
@@ -27,9 +37,10 @@ class Entry:
         self.previous = previous
         self.next = next
 
-class TokenizedCtx:
+
+class TokenizedStream:
     @staticmethod
-    def from_list(elements: List[LexicalElement]) -> TokenizedCtx:
+    def from_list(elements: List[LexicalElement]) -> TokenizedStream:
         element_list: Dict[ElementKey, Entry] = dict()
 
         first = ElementKey(0)
@@ -45,7 +56,7 @@ class TokenizedCtx:
 
             element_list[ElementKey(i)] = Entry(e, ElementKey(i - 1), ElementKey(i + 1))
 
-        return TokenizedCtx(
+        return TokenizedStream(
             element_list,
             ElementKey(0),
             end,
@@ -53,15 +64,14 @@ class TokenizedCtx:
 
     def __init__(
         self,
-        element_list: Dict[ElementKey, Entry], # {id: (token, from, to)}
+        element_list: Dict[ElementKey, Entry],  # {id: (token, from, to)}
         idx: ElementKey,
         end: ElementKey,
     ) -> None:
 
         self.entries = element_list
         self.idx = idx
-        self.end = end # Reference to the first element outisde the list
-
+        self.end = end  # Reference to the first element outisde the list
 
     def current_span(self) -> Span:
         if self.idx == self.end:
@@ -123,8 +133,9 @@ class TokenizedCtx:
         return None
 
     @staticmethod
-    def tokenize(ctx: SourceCtx) -> TokenizedCtx:
+    def tokenize(inp: SourceStream) -> TokenizedStream:
         from .tokenizer.header_name import HeaderName
+
         elements: List[LexicalElement] = []
 
         last_token = None
@@ -132,10 +143,12 @@ class TokenizedCtx:
 
         while True:
             tok: Optional[LexicalElement] = None
-            if len(elements) >= 2 and HeaderName.is_valid(ctx, last_token, second_last_token):
-                tok = HeaderName.tokenize(ctx)
-            elif LexicalElement.is_valid(ctx):
-                tok = LexicalElement.tokenize(ctx)
+            if len(elements) >= 2 and HeaderName.is_valid(
+                inp, last_token, second_last_token
+            ):
+                tok = HeaderName.tokenize(inp)
+            elif LexicalElement.is_valid(inp):
+                tok = LexicalElement.tokenize(inp)
             else:
                 break
             elements.append(tok)
@@ -143,5 +156,4 @@ class TokenizedCtx:
                 second_last_token = last_token
                 last_token = tok
 
-        return TokenizedCtx.from_list(elements)
-
+        return TokenizedStream.from_list(elements)
