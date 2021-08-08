@@ -4,12 +4,13 @@ from abc import ABC, abstractmethod
 import time
 
 from ..tokenizer.tokenize import LexicalElement, SpaceSequence
-from span import Span, Source, PseudoFilename
+from span import Span, Source, PseudoFilename, MarkColor
 from ..tokenized_ctx import TokenizedCtx
 
 from ..tokenizer.punctuator import Punctuator, PunctuatorType
 from ..tokenizer.identifier import Identifier
 from ..tokenizer.string import StringLiteral, StringPrefix
+from ..tokenizer.header_name import HeaderName
 
 PREDEFINED_MACROS_SOURCE = Source(PseudoFilename.PREDEFINED_MACROS, "")
 
@@ -255,7 +256,19 @@ def preprocess_error(directive_name: Identifier, tokens: TokenizedCtx, ctx: Dire
     raise DirectiveError(error_token.contents, error_token.span)
 
 def preprocess_include(directive_name: Identifier, tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
-    raise NotImplementedError("#include is not yet implemented")
+    args = get_directive_tokens(tokens)
+
+    header_name = args.pop_token()
+    if header_name is None:
+        raise DirectiveException("Expected header to include", directive_name.span)
+    if not isinstance(header_name, HeaderName):
+        raise DirectiveException("Expected header name", header_name.span)
+
+    after = args.peek_token()
+    if after is not None:
+        raise DirectiveException("Expected newline", after.span)
+
+    raise DirectiveException("Searching for files is not yet implemented", directive_name.span)
 
 def preprocess_if_group(directive_name: Identifier, tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
     raise NotImplementedError("#if... is not yet implemented")

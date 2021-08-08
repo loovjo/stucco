@@ -8,6 +8,8 @@ from span import Span, SourceCtx, Source, MarkColor
 if __name__ == "__main__":
     code = r"""
 // #if 1 == 1
+#include <the.h>
+#include "helloboi.h"
 #define S_(x) #x
 #define S(x) S_(x)
 #define dprintf(...) printf(__FILE__ ":" S(__LINE__) ": " __VA_ARGS__)
@@ -17,10 +19,9 @@ dprintf(E);
 
 #undef E
 // #endif
-#error "helo world"
+// #error "helo world"
 
 """[1:-1]
-
 
     ctx = SourceCtx(Source("x.py", code), 0)
 
@@ -47,9 +48,10 @@ dprintf(E);
         # ctx.source.print_spans([(thing.span, MarkColor.INFO_BLUE) for thing in parsed])
 
     except TokenizeException as e:
-        print("Error:", e.msg)
+        traceback.print_exc()
+        print("Tokenization error:", e.msg)
         ctx.source.print_spans([(e.span, MarkColor.ERROR_RED)])
     except DirectiveException as e:
         # traceback.print_exc()
-        print("Error:", e.msg)
+        print("Directive expansion error:", e.msg)
         ctx.source.print_spans([(e.span, MarkColor.ERROR_RED)])
