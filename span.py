@@ -28,6 +28,7 @@ class DownSpan:
         self.col = col
 
 class PseudoFilename(Enum):
+    NULL = "Null file"
     PREDEFINED_MACROS = "Predefined macros"
 
 class Source:

@@ -1,52 +1,125 @@
 from __future__ import annotations
-from typing import List, Optional
+from typing import List, Optional, NewType, Dict, Tuple
 
-from span import Span, SourceCtx, Source
+from span import Span, SourceCtx, Source, PseudoFilename
 from .tokenizer.tokenize import TokenizeException, PPToken, ProperPPToken, LexicalElement
 
+class _EOFElement(LexicalElement):
+    @staticmethod
+    def tokenize(ctx: SourceCtx) -> LexicalElement:
+        raise TokenizeException("_EOFElement should never be tokenized", ctx.point_span())
+
+    @staticmethod
+    def is_valid(ctx: SourceCtx) -> bool:
+        return False
+
+ElementKey = NewType("ElementKey", int)
+START: ElementKey = ElementKey(0)
+
+# TokenizedCtx iterates using an internal doubly linked list. The linked list
+# is shared among subctxs.
+# Internally, the linked list is circular, but the TokenizedCtx.end represents
+# the first member of the list that is not part of the ctx
+
+class Entry:
+    def __init__(self, element: LexicalElement, previous: ElementKey, next: ElementKey):
+        self.element = element
+        self.previous = previous
+        self.next = next
+
 class TokenizedCtx:
-    def __init__(self, elements: List[LexicalElement], idx: int = 0, end: Optional[int] = None) -> None:
-        self.elements = elements
+    @staticmethod
+    def from_list(elements: List[LexicalElement]) -> TokenizedCtx:
+        element_list: Dict[ElementKey, Entry] = dict()
+
+        first = ElementKey(0)
+        last = ElementKey(len(elements) - 1)
+        end = ElementKey(len(elements))
+
+        nullSpan = Span(Source(PseudoFilename.NULL, ""), 0, 0)
+        element_list[end] = Entry(_EOFElement(nullSpan), last, first)
+
+        for i, e in enumerate(elements):
+            last = ElementKey(i - 1) if i > 0 else end
+            next = ElementKey(i + 1) if i < end else 0
+
+            element_list[ElementKey(i)] = Entry(e, ElementKey(i - 1), ElementKey(i + 1))
+
+        return TokenizedCtx(
+            element_list,
+            ElementKey(0),
+            end,
+        )
+
+    def __init__(
+        self,
+        element_list: Dict[ElementKey, Entry], # {id: (token, from, to)}
+        idx: ElementKey,
+        end: ElementKey,
+    ) -> None:
+
+        self.entries = element_list
         self.idx = idx
+        self.end = end # Reference to the first element outisde the list
 
-        self.end = len(elements) if end is None else end
-
-        assert(self.end <= len(self.elements))
 
     def current_span(self) -> Span:
-        if self.idx >= self.end:
-            last = self.elements[-1].span
-            return Span(last.source, last.end, last.end)
+        if self.idx == self.end:
+            last_id = self.entries[self.end].previous
+            last_span = self.entries[last_id].element.span
 
-        return self.elements[self.idx].span
+            return Span(last_span.source, last_span.end, last_span.end)
+
+        return self.entries[self.idx].element.span
 
     def peek_element(self, offset: int = 0) -> Optional[LexicalElement]:
-        if 0 <= self.idx + offset < self.end:
-            return self.elements[self.idx + offset]
-        return None
+        if offset < 0:
+            current = self.idx
+            for _ in range(-offset):
+                if current == self.end:
+                    return None
+
+                current = self.entries[current].previous
+            if current == self.end:
+                return None
+            return self.entries[current].element
+        else:
+            current = self.idx
+            for _ in range(offset):
+                if current == self.end:
+                    return None
+
+                current = self.entries[current].next
+            if current == self.end:
+                return None
+            return self.entries[current].element
 
     def peek_token(self) -> Optional[LexicalElement]:
-        i = self.idx
-        while i < self.end:
-            if isinstance(self.elements[i], PPToken):
-                return self.elements[i]
-            i += 1
+        current = self.idx
+        while current != self.end:
+            if isinstance(self.entries[current].element, PPToken):
+                return self.entries[current].element
+
+            current = self.entries[current].next
         return None
 
     def pop_element(self) -> Optional[LexicalElement]:
-        if self.idx >= self.end:
+        if self.idx == self.end:
             return None
-        else:
-            e = self.elements[self.idx]
-            self.idx += 1
-            return e
+
+        el = self.entries[self.idx].element
+        self.idx = self.entries[self.idx].next
+        return el
 
     def pop_token(self) -> Optional[LexicalElement]:
-        while self.idx < self.end:
-            el = self.elements[self.idx]
-            self.idx += 1
+        while self.idx != self.end:
+            el = self.entries[self.idx].element
+
+            self.idx = self.entries[self.idx].next
+
             if isinstance(el, PPToken):
                 return el
+
         return None
 
     @staticmethod
@@ -69,5 +142,5 @@ class TokenizedCtx:
             else:
                 break
 
-        return TokenizedCtx(elements)
+        return TokenizedCtx.from_list(elements)
 
