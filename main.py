@@ -1,6 +1,6 @@
 from preprocessing.tokenizer.tokenize import TokenizeException, ProperPPToken
 from preprocessing.tokenized_ctx import TokenizedCtx
-from preprocessing.directives.directive import preprocess, DirectiveExecutionContext, DirectiveException
+from preprocessing.directives import preprocess, DirectiveExecutionContext, DirectiveException
 import traceback
 
 from span import Span, SourceCtx, Source, MarkColor

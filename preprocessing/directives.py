@@ -3,14 +3,15 @@ from typing import List, Dict, Union, Optional
 from abc import ABC, abstractmethod
 import time
 
-from ..tokenizer.tokenize import LexicalElement, SpaceSequence
+from .tokenizer.tokenize import LexicalElement, SpaceSequence
 from span import Span, Source, PseudoFilename, MarkColor
-from ..tokenized_ctx import TokenizedCtx
+from .tokenized_ctx import TokenizedCtx
 
-from ..tokenizer.punctuator import Punctuator, PunctuatorType
-from ..tokenizer.identifier import Identifier
-from ..tokenizer.string import StringLiteral, StringPrefix
-from ..tokenizer.header_name import HeaderName
+from .tokenizer.punctuator import Punctuator, PunctuatorType
+from .tokenizer.identifier import Identifier
+from .tokenizer.string import StringLiteral, StringPrefix
+from .tokenizer.header_name import HeaderName
+from .tokenizer.number import PPNumber, Digit, Exponent, Dot
 
 PREDEFINED_MACROS_SOURCE = Source(PseudoFilename.PREDEFINED_MACROS, "")
 
@@ -59,8 +60,6 @@ def make_str_macro(st: str) -> Macro:
     )
 
 def make_int_macro(num: int) -> Macro:
-    from ..tokenizer.number import PPNumber, Digit, Exponent, Dot
-
     span = Span(PREDEFINED_MACROS_SOURCE, 0, 0)
     digits: List[Union[Digit, Exponent, Dot, str]] = [Digit(span, int(digit)) for digit in str(num)]
 
