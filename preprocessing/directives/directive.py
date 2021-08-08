@@ -129,13 +129,13 @@ def get_directive_tokens(tokens: TokenizedCtx) -> TokenizedCtx:
     start = tokens.idx
 
     while True:
-        el = tokens.entries[tokens.end].element
-        if isinstance(el, SpaceSequence) and el.has_nl or next is None:
+        el = tokens.peek_element()
+        if isinstance(el, SpaceSequence) and el.has_nl or el is None:
             break
 
-        tokens.end = tokens.entries[tokens.end].next
+        tokens.pop_element()
 
-    return TokenizedCtx(tokens.entries, start, tokens.end)
+    return TokenizedCtx(tokens.entries, start, tokens.idx)
 
 def preprocess_define(directive_name: Identifier, tokens: TokenizedCtx, ctx: DirectiveExecutionContext) -> None:
     args = get_directive_tokens(tokens)
