@@ -1,5 +1,6 @@
 from preprocessing.tokenizer.tokenize import TokenizeException, ProperPPToken
-from preprocessing.tokenized_stream import TokenizedStream
+from preprocessing.tokenized_stream import TokenizedStream, render_stream
+from preprocessing.tokenizer.identifier import Identifier
 from preprocessing.directives import (
     preprocess,
     DirectiveExecutionContext,
@@ -20,23 +21,14 @@ if __name__ == "__main__":
     try:
         tokenized = TokenizedStream.tokenize(data)
 
-        dectx = DirectiveExecutionContext()
+        dectx = DirectiveExecutionContext(ctx)
         preprocess(tokenized, dectx)
-        print(dectx.macros.keys())
+        tokenized.idx = tokenized.entries[tokenized.end].next
 
-        while True:
-            thing = tokenized.pop_token()
-            if thing is None:
-                break
-
-            print(repr(thing))
-            data.source.print_spans([(thing.span, MarkColor.INFO_BLUE)])
-            # input()
-
-        print("end:")
-        data.source.print_spans([(data.point_span(), MarkColor.INFO_BLUE)])
-
-        # ctx.source.print_spans([(thing.span, MarkColor.INFO_BLUE) for thing in parsed])
+        for le in tokenized.collect():
+            if isinstance(le, Identifier):
+                print(repr(le))
+                le.span.source.print_spans([(le.span, MarkColor.INFO_BLUE)])
 
     except TokenizeException as e:
         traceback.print_exc()
