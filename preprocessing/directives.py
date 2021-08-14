@@ -4,14 +4,15 @@ from abc import ABC, abstractmethod
 import time
 
 from .tokenizer.tokenize import LexicalElement, SpaceSequence
-from span import Span, Source, PseudoFilename, MarkColor
-from .tokenized_stream import TokenizedStream
+from span import Span, Source, PseudoFilename, MarkColor, SourceStream
+from .tokenized_stream import TokenizedStream, ElementKey
 
 from .tokenizer.punctuator import Punctuator, PunctuatorType
 from .tokenizer.identifier import Identifier
 from .tokenizer.string import StringLiteral, StringPrefix
 from .tokenizer.header_name import HeaderName
 from .tokenizer.number import PPNumber, Digit, Exponent, Dot
+from compilation_ctx import CompilationCtx, BrainRotAmount
 
 PREDEFINED_MACROS_SOURCE = Source(PseudoFilename.PREDEFINED_MACROS, "")
 
@@ -88,8 +89,11 @@ def make_int_macro(num: int) -> Macro:
 
 
 # Stores things like currently defined macros, etc.
+# TODO: Store the current stack of includes here, to prevent files from recursively including themselves
 class DirectiveExecutionContext:
-    def __init__(self) -> None:
+    def __init__(self, compilation_ctx: CompilationCtx) -> None:
+        self.compilation_ctx = compilation_ctx
+
         self.macros: Dict[str, Macro] = {
             # from section 6.10.8.1
             "__DATE__": make_str_macro(current_date()),
@@ -115,6 +119,7 @@ class DirectiveError(DirectiveException):
 # Modifies tokens in place, may throw DirectiveException
 def preprocess(tokens: TokenizedStream, ctx: DirectiveExecutionContext) -> None:
     while True:
+        start_key = tokens.idx
         tok = tokens.pop_token()
         if tok is None:
             break
@@ -139,7 +144,7 @@ def preprocess(tokens: TokenizedStream, ctx: DirectiveExecutionContext) -> None:
                 elif name == "error":
                     preprocess_error(directive_name_ident, tokens, ctx)
                 elif name == "include":
-                    preprocess_include(directive_name_ident, tokens, ctx)
+                    preprocess_include(start_key, directive_name_ident, tokens, ctx)
                 elif name in ["if", "ifdef", "ifndef"]:
                     preprocess_if_group(directive_name_ident, tokens, ctx)
                 elif name == "line":
@@ -321,7 +326,10 @@ def preprocess_error(
 
 
 def preprocess_include(
-    directive_name: Identifier, tokens: TokenizedStream, ctx: DirectiveExecutionContext
+    start_key: ElementKey,
+    directive_name: Identifier,
+    tokens: TokenizedStream,
+    ctx: DirectiveExecutionContext,
 ) -> None:
     args = get_directive_tokens(tokens)
 
@@ -335,9 +343,27 @@ def preprocess_include(
     if after is not None:
         raise DirectiveException("Expected newline", after.span)
 
-    raise DirectiveException(
-        "Searching for files is not yet implemented", directive_name.span
-    )
+    source: Optional[Source] = None
+
+    # C standard dictates `#include "xyz"` should act as `#include <xyz>` if "xyz" is not found.
+    if ctx.compilation_ctx.brain_rot_amount <= BrainRotAmount.REDUCED:
+        source = ctx.compilation_ctx.find_include_source(
+            header_name.name, not header_name.is_q
+        )
+    else:
+        if header_name.is_q:
+            source = ctx.compilation_ctx.find_include_source(header_name.name, False)
+        source = source or ctx.compilation_ctx.find_include_source(
+            header_name.name, True
+        )
+
+    if source is None:
+        raise DirectiveException(
+            f"Failed to search for {header_name}", header_name.span
+        )
+
+    included = TokenizedStream.tokenize(SourceStream(source, 0))
+    tokens.replace_range(start_key, tokens.idx, included)
 
 
 def preprocess_if_group(
