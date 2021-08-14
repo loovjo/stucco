@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import List, Optional, NewType, Dict, Tuple
+import random
 
 from span import Span, SourceStream, Source, PseudoFilename
 from .tokenizer.tokenize import (
@@ -23,7 +24,8 @@ class _EOFElement(LexicalElement):
 
 
 ElementKey = NewType("ElementKey", int)
-START: ElementKey = ElementKey(0)
+def make_key() -> ElementKey:
+    return ElementKey(random.getrandbits(128))
 
 # TokenizedStream iterates using an internal doubly linked list. The linked list
 # is shared among subctxs.
@@ -43,22 +45,25 @@ class TokenizedStream:
     def from_list(elements: List[LexicalElement]) -> TokenizedStream:
         element_list: Dict[ElementKey, Entry] = dict()
 
-        first = ElementKey(0)
-        last = ElementKey(len(elements) - 1)
-        end = ElementKey(len(elements))
+        idx2key = [make_key() for _ in range(len(elements) + 1)]
+
+
+        first = idx2key[0]
+        last = idx2key[len(elements) - 1]
+        end = idx2key[len(elements)]
 
         nullSpan = Span(Source(PseudoFilename.NULL, ""), 0, 0)
         element_list[end] = Entry(_EOFElement(nullSpan), last, first)
 
         for i, e in enumerate(elements):
-            last = ElementKey(i - 1) if i > 0 else end
-            next = ElementKey(i + 1) if i < end else 0
+            last = idx2key[i - 1] if i > 0 else end
+            next = idx2key[i + 1] if i < end else 0
 
-            element_list[ElementKey(i)] = Entry(e, ElementKey(i - 1), ElementKey(i + 1))
+            element_list[idx2key[i]] = Entry(e, idx2key[i - 1], idx2key[i + 1])
 
         return TokenizedStream(
             element_list,
-            ElementKey(0),
+            first,
             end,
         )
 
@@ -72,6 +77,51 @@ class TokenizedStream:
         self.entries = element_list
         self.idx = idx
         self.end = end  # Reference to the first element outisde the list
+
+    def collect(self) -> List[LexicalElement]:
+        out = []
+
+        idx = self.idx
+        while idx != self.end:
+            out.append(self.entries[idx].element)
+            idx = self.entries[idx].next
+
+        return out
+
+    def _check_coherence(self) -> None:
+        for key in self.entries:
+            before = self.entries[key].previous
+            after = self.entries[key].next
+            assert(self.entries[before].next == key)
+            assert(self.entries[after].previous == key)
+
+    # start is inclusive, end is not. invalidates data
+    def replace_range(self, start: ElementKey, end: ElementKey, data: TokenizedStream) -> None:
+
+        before_start = self.entries[start].previous
+        before_end = self.entries[end].previous
+
+        before_data_end = data.entries[data.end].previous
+
+        to_add = data.idx
+        while to_add != data.end:
+            assert(to_add not in self.entries)
+            self.entries[to_add] = data.entries[to_add]
+            to_add = data.entries[to_add].next
+
+        self.entries[before_start].next = data.idx
+        self.entries[data.idx].previous = before_start
+
+        self.entries[before_data_end].next = end
+        self.entries[end].previous = before_data_end
+
+        to_delete = start
+        while to_delete != end:
+            next = self.entries[to_delete].next
+            del self.entries[to_delete]
+            to_delete = next
+
+        # self._check_coherence()
 
     def current_span(self) -> Span:
         if self.idx == self.end:
@@ -157,3 +207,18 @@ class TokenizedStream:
                 last_token = tok
 
         return TokenizedStream.from_list(elements)
+
+# Renders stream into a graphviz object
+def render_stream(stream: TokenizedStream) -> None:
+    import graphviz # type: ignore # no stubs sadge
+
+    graph = graphviz.Digraph()
+
+    for k, v in stream.entries.items():
+        print(k, v)
+        graph.node("N" + str(k), str(v.element), color="blue" if k == stream.idx else "red" if k == stream.end else None)
+        graph.edge("N" + str(k), "N" + str(v.next), color="blue")
+        graph.edge("N" + str(v.previous), "N" + str(k), color="red")
+
+    graph.render("/tmp/grap", view=True)
+
