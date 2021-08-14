@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List, Dict, Optional
 from enum import Enum
-
+from span import Source
 
 class BrainRotAmount(Enum):
     REDUCED = -1
@@ -38,6 +38,10 @@ class CompilationCtx:
 
         self.compiler_path = compiler_path
 
+    def input_source(self) -> Source:
+        with open(self.input_file, "r") as input_file:
+            return Source(self.input_file, input_file.read())
+
     def __str__(self) -> str:
         return f"{self.__class__.__name__}(" \
                 f"input_file={self.input_file!r}, " \
@@ -46,7 +50,7 @@ class CompilationCtx:
                 f"predefined_macros={self.predefined_macros!r}, " \
                 f"brain_rot_amount={self.brain_rot_amount!r})" \
 
-# Option format:
+    # Option format:
     #   <file>. Compile <file>. Can only appear once
     #   -o<file> or -o <file>: Output to <file>. Default a.out. Can only appear once
     #   -I<path> or -I <path>: Include <path>. Can appear multiple times

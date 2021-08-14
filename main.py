@@ -11,30 +11,11 @@ import traceback
 from span import Span, SourceStream, Source, MarkColor
 
 if __name__ == "__main__":
-    args = ["main.py", "-Dbeans", "-fno-brain-rot", "x.c", "-I", "sample_code"]
+    args = ["main.py", "-Dbeans", "-fno-brain-rot", "test_src/main.c", "-I", "test_src"]
+
     ctx = CompilationCtx.from_args(args)
-    print(ctx)
 
-    code = r"""
-// #if 1 == 1
-#include <the.h>
-#include "helloboi.h"
-#define S_(x) #x
-#define S(x) S_(x)
-#define dprintf(...) printf(__FILE__ ":" S(__LINE__) ": " __VA_ARGS__)
-#define E 2.71
-
-dprintf(E);
-
-#undef E
-// #endif
-// #error "helo world"
-
-"""[
-        1:-1
-    ]
-
-    data = SourceStream(Source("x.c", code), 0)
+    data = SourceStream(ctx.input_source(), 0)
 
     try:
         tokenized = TokenizedStream.tokenize(data)
