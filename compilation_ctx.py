@@ -1,12 +1,12 @@
 from __future__ import annotations
 from typing import List, Dict, Optional
-from enum import Enum
+from enum import IntEnum
 import os
 
 from span import Source
 
 
-class BrainRotAmount(Enum):
+class BrainRotAmount(IntEnum):
     REDUCED = -1
     STANDARD = 0
     EXTRA = 1
