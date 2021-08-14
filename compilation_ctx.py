@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import List, Dict, Optional
 from enum import Enum
+import os
+
 from span import Source
 
 
@@ -42,6 +44,16 @@ class CompilationCtx:
     def input_source(self) -> Source:
         with open(self.input_file, "r") as input_file:
             return Source(self.input_file, input_file.read())
+
+    def find_include_source(self, filename: str) -> Optional[Source]:
+        for inc_path in self.include_paths:
+            f = os.path.join(inc_path, filename)
+            if os.path.isfile(f):
+                with open(f, "r") as include_file:
+                    return Source(f, include_file.read())
+
+
+        return None
 
     def __str__(self) -> str:
         return (
