@@ -3,6 +3,7 @@ from typing import List, Dict, Optional
 from enum import Enum
 from span import Source
 
+
 class BrainRotAmount(Enum):
     REDUCED = -1
     STANDARD = 0
@@ -43,12 +44,14 @@ class CompilationCtx:
             return Source(self.input_file, input_file.read())
 
     def __str__(self) -> str:
-        return f"{self.__class__.__name__}(" \
-                f"input_file={self.input_file!r}, " \
-                f"output_file={self.output_file!r}, " \
-                f"include_paths={self.include_paths!r}, " \
-                f"predefined_macros={self.predefined_macros!r}, " \
-                f"brain_rot_amount={self.brain_rot_amount!r})" \
+        return (
+            f"{self.__class__.__name__}("
+            f"input_file={self.input_file!r}, "
+            f"output_file={self.output_file!r}, "
+            f"include_paths={self.include_paths!r}, "
+            f"predefined_macros={self.predefined_macros!r}, "
+            f"brain_rot_amount={self.brain_rot_amount!r})"
+        )
 
     # Option format:
     #   <file>. Compile <file>. Can only appear once
@@ -77,7 +80,7 @@ class CompilationCtx:
 
         argidx = 0
         while argidx < len(args) - 1:
-            argidx += 1 # intentionally skip arg 0
+            argidx += 1  # intentionally skip arg 0
 
             arg = args[argidx]
             if arg == "":
@@ -86,19 +89,25 @@ class CompilationCtx:
             if arg[0] == "-":
                 if len(arg) == 1:
                     # TODO: Support - as option
-                    raise CompilationCtxArgsParseException("Stdin input through - is not yet supported", argidx)
+                    raise CompilationCtxArgsParseException(
+                        "Stdin input through - is not yet supported", argidx
+                    )
                 elif arg[1] == "o":
                     name = None
                     if len(arg) == 2:
                         argidx += 1
                         if argidx >= len(args):
-                            raise CompilationCtxArgsParseException("Expected path after -o", argidx - 1)
+                            raise CompilationCtxArgsParseException(
+                                "Expected path after -o", argidx - 1
+                            )
                         name = args[argidx]
                     else:
                         name = arg[2:]
 
                     if output_file is not None:
-                        raise CompilationCtxArgsParseException("Multiple values for -o", argidx - 1)
+                        raise CompilationCtxArgsParseException(
+                            "Multiple values for -o", argidx - 1
+                        )
 
                     output_file = name
                     continue
@@ -107,7 +116,9 @@ class CompilationCtx:
                     if len(arg) == 2:
                         argidx += 1
                         if argidx >= len(args):
-                            raise CompilationCtxArgsParseException("Expected path after -I", argidx - 1)
+                            raise CompilationCtxArgsParseException(
+                                "Expected path after -I", argidx - 1
+                            )
                         name = args[argidx]
                     else:
                         name = arg[2:]
@@ -120,7 +131,9 @@ class CompilationCtx:
                     if len(arg) == 2:
                         argidx += 1
                         if argidx >= len(args):
-                            raise CompilationCtxArgsParseException("Expected macro after -D", argidx - 1)
+                            raise CompilationCtxArgsParseException(
+                                "Expected macro after -D", argidx - 1
+                            )
                         macro = args[argidx]
                     else:
                         macro = arg[2:]
