@@ -11,7 +11,7 @@ import traceback
 from span import Span, SourceStream, Source, MarkColor
 
 if __name__ == "__main__":
-    args = ["main.py", "-Dbeans", "-fno-brain-rot", "test_src/main.c", "-I", "test_src"]
+    args = ["main.py", "-Dbeans", "-fno-brain-rot", "test_src/main.c", "-I", "test_src", "-L", "/Library/Developer/CommandLineTools/SDKs/MacOSX11.3.sdk/usr/include"]
 
     ctx = CompilationCtx.from_args(args)
 
